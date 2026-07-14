@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Distance Photobooth</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:linear-gradient(180deg,#ffeef8 0%,#ffd6e8 30%,#ffc4dd 60%,#ffb3d1 100%);min-height:100vh;color:#8b2357;overflow-x:hidden}
+.screen{display:none;min-height:100vh;padding:20px;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.screen.active{display:flex}
+h1{font-size:2.2rem;margin-bottom:10px;color:#d63384;text-shadow:0 2px 10px rgba(214,51,132,0.2)}
+p{font-size:1rem;color:#a03a6b;margin-bottom:20px}
+.btn{background:linear-gradient(135deg,#ff85a2,#ff5c8d);color:#fff;border:none;padding:15px 45px;border-radius:50px;font-size:1.1rem;font-weight:bold;cursor:pointer;margin:10px;box-shadow:0 4px 20px rgba(255,92,141,0.4);transition:all 0.2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 25px rgba(255,92,141,0.5)}
+.btn:active{transform:scale(0.95)}
+.btn-secondary{background:#fff;border:2px solid #ff85a2;color:#ff5c8d}
+.btn-secondary:hover{background:#fff0f5}
+input{background:#fff;border:2px solid #ffb3d1;color:#8b2357;padding:15px 20px;border-radius:25px;font-size:1rem;width:100%;max-width:300px;text-align:center;margin:10px 0;box-shadow:0 2px 10px rgba(255,92,141,0.1)}
+input::placeholder{color:#d4a5b8}
+input:focus{border-color:#ff5c8d;outline:none;box-shadow:0 0 15px rgba(255,92,141,0.2)}
+.camera-container{position:relative;width:100%;max-width:400px;margin:20px auto;background:#000;border-radius:25px;overflow:hidden;box-shadow:0 10px 30px rgba(255,92,141,0.2);border:4px solid #fff;min-height:300px;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none}
+video.active{display:block}
+#canvas{display:none}
+.countdown{font-size:5rem;font-weight:bold;margin:20px 0;color:#ff5c8d;text-shadow:0 0 30px rgba(255,92,141,0.5)}
+.photo-strip{display:flex;gap:10px;overflow-x:auto;padding:20px;max-width:100%}
+.photo-strip img{height:150px;border-radius:15px;box-shadow:0 4px 15px rgba(255,92,141,0.2);border:3px solid #fff}
+.template-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:400px;margin:20px auto}
+.template-btn{padding:15px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;background:#fff;color:#d63384;transition:all 0.2s;box-shadow:0 2px 8px rgba(255,92,141,0.15);font-weight:600}
+.template-btn.active{background:linear-gradient(135deg,#ff85a2,#ff5c8d);color:#fff;transform:scale(1.05);box-shadow:0 4px 15px rgba(255,92,141,0.3)}
+.editor-canvas{max-width:100%;border-radius:20px;box-shadow:0 10px 30px rgba(255,92,141,0.2);margin:20px 0;border:4px solid #fff}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:20px 0}
+.toolbar-btn{padding:10px 20px;border-radius:20px;border:none;background:#fff;color:#d63384;cursor:pointer;font-size:0.9rem;transition:all 0.2s;box-shadow:0 2px 8px rgba(255,92,141,0.15);font-weight:600}
+.toolbar-btn.active{background:linear-gradient(135deg,#ff85a2,#ff5c8d);color:#fff;box-shadow:0 4px 15px rgba(255,92,141,0.3)}
+.sticker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:350px;margin:10px auto;max-height:200px;overflow-y:auto;padding:10px;background:#fff;border-radius:20px;box-shadow:0 2px 10px rgba(255,92,141,0.1)}
+.sticker-btn{font-size:2rem;background:none;border:none;cursor:pointer;padding:5px;transition:transform 0.2s}
+.sticker-btn:active{transform:scale(1.3)}
+.text-input{background:#fff;border:2px solid #ffb3d1;color:#8b2357;padding:10px 15px;border-radius:20px;margin:5px;width:200px}
+.text-input:focus{border-color:#ff5c8d;outline:none}
+.color-picker{display:flex;gap:8px;justify-content:center;margin:10px 0;flex-wrap:wrap;padding:10px;background:#fff;border-radius:20px;box-shadow:0 2px 10px rgba(255,92,141,0.1)}
+.color-btn{width:30px;height:30px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform 0.2s}
+.color-btn.active{border-color:#ff5c8d;transform:scale(1.2)}
+.room-code{font-size:2.5rem;font-weight:bold;letter-spacing:8px;background:#fff;padding:20px 40px;border-radius:25px;margin:20px 0;color:#d63384;box-shadow:0 4px 20px rgba(255,92,141,0.2);border:3px solid #ffb3d1}
+.status-indicator{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:8px}
+.status-online{background:#4caf50;box-shadow:0 0 10px #4caf50}
+.status-offline{background:#ff6b6b}
+.status-waiting{background:#ffc107}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:linear-gradient(135deg,#ff85a2,#ff5c8d);color:#fff;padding:15px 30px;border-radius:30px;opacity:0;transition:all 0.3s;z-index:1000;box-shadow:0 4px 20px rgba(255,92,141,0.4);font-weight:600}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.loader{width:40px;height:40px;border:4px solid #ffb3d1;border-top-color:#ff5c8d;border-radius:50%;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.snap-btn{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#ff85a2,#ff5c8d);border:5px solid #fff;cursor:pointer;margin:20px auto;box-shadow:0 0 30px rgba(255,92,141,0.4);transition:all 0.2s}
+.snap-btn:active{transform:scale(0.9)}
+.snap-btn-inner{width:70px;height:70px;border-radius:50%;background:#fff;margin:5px auto;box-shadow:inset 0 2px 10px rgba(255,92,141,0.2)}
+.name-input{background:#fff;border:2px solid #ffb3d1;color:#8b2357;padding:12px 20px;border-radius:25px;font-size:1rem;width:100%;max-width:250px;text-align:center;margin:8px 0}
+.name-input:focus{border-color:#ff5c8d;outline:none;box-shadow:0 0 15px rgba(255,92,141,0.2)}
+.share-box{background:#fff;border:2px solid #ffb3d1;border-radius:20px;padding:15px;margin:15px 0;max-width:350px;width:100%;box-shadow:0 4px 15px rgba(255,92,141,0.15)}
+.share-box p{font-size:0.85rem;margin-bottom:8px;color:#a03a6b}
+.share-link{background:#fff5f8;border:2px solid #ffb3d1;border-radius:12px;padding:10px;font-size:0.8rem;color:#d63384;word-break:break-all;font-weight:600}
+.heart-decoration{position:fixed;font-size:2rem;opacity:0.1;animation:float 6s ease-in-out infinite;pointer-events:none}
+.heart-decoration:nth-child(1){top:10%;left:5%;animation-delay:0s}
+.heart-decoration:nth-child(2){top:20%;right:10%;animation-delay:1s}
+.heart-decoration:nth-child(3){top:60%;left:8%;animation-delay:2s}
+.heart-decoration:nth-child(4){top:80%;right:5%;animation-delay:3s}
+.heart-decoration:nth-child(5){top:40%;left:15%;animation-delay:4s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+.tool-panel{background:#fff;border-radius:20px;padding:15px;margin:10px 0;box-shadow:0 4px 15px rgba(255,92,141,0.1);max-width:400px;width:100%}
+.camera-error{background:#fff5f8;border:2px solid #ffb3d1;border-radius:20px;padding:20px;margin:20px;max-width:350px;text-align:center}
+.camera-error h3{color:#d63384;margin-bottom:10px}
+.camera-error p{color:#a03a6b;font-size:0.9rem;margin-bottom:15px}
+.upload-btn{background:linear-gradient(135deg,#ff85a2,#ff5c8d);color:#fff;border:none;padding:12px 30px;border-radius:25px;font-size:1rem;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(255,92,141,0.3)}
+#fileInput{display:none}
+.camera-placeholder{color:#fff;font-size:1.2rem;text-align:center;padding:40px}
+</style>
+</head>
+<body>
+<div class="heart-decoration">💕</div>
+<div class="heart-decoration">💖</div>
+<div class="heart-decoration">💗</div>
+<div class="heart-decoration">💝</div>
+<div class="heart-decoration">💘</div>
+
+<div class="screen active" id="screenLanding">
+<h1>Distance Photobooth</h1>
+<p>Take photos together, even when you're apart</p>
+<div class="loader" id="authLoader"></div>
+<p id="authStatus" style="font-size:0.9rem;color:#d4a5b8">Loading...</p>
+</div>
+
+<div class="screen" id="screenMenu">
+<h1>Welcome!</h1>
+<p>Create a room or join your partner's room</p>
+<button class="btn" onclick="showCreateRoom()">Create Room</button>
+<button class="btn btn-secondary" onclick="showJoinRoom()">Join Room</button>
+</div>
+
+<div class="screen" id="screenCreate">
+<h1>Create Room</h1>
+<p>Enter your name to create a room</p>
+<input type="text" id="createNameInput" class="name-input" placeholder="Your Name" maxlength="20">
+<button class="btn" onclick="createRoom()">Create Room</button>
+<button class="btn btn-secondary" onclick="goTo('screenMenu')">Back</button>
+</div>
+
+<div class="screen" id="screenJoin">
+<h1>Join Room</h1>
+<p>Enter your name and the room code</p>
+<input type="text" id="joinNameInput" class="name-input" placeholder="Your Name" maxlength="20">
+<input type="text" id="roomCodeInput" placeholder="Enter room code (e.g. LOVE42)" maxlength="10">
+<button class="btn" onclick="joinRoom()">Join Room</button>
+<button class="btn btn-secondary" onclick="goTo('screenMenu')">Back</button>
+</div>
+
+<div class="screen" id="screenLobby">
+<h1>Room Created!</h1>
+<p>Share this code with your partner</p>
+<div class="room-code" id="roomCodeDisplay">----</div>
+<div class="share-box">
+<p>Share this link:</p>
+<div class="share-link" id="shareLink">Loading...</div>
+</div>
+<p>Waiting for your partner to join...</p>
+<div style="margin:20px 0">
+<span class="status-indicator status-waiting" id="hostStatus"></span>
+<span id="hostName" style="color:#8b2357;font-weight:600">You</span>
+</div>
+<div style="margin:10px 0">
+<span class="status-indicator status-offline" id="guestStatus"></span>
+<span id="guestName" style="color:#8b2357;font-weight:600">Partner</span>
+</div>
+<button class="btn" id="startShootBtn" onclick="goTo('screenCamera')" disabled>Waiting for partner...</button>
+<button class="btn btn-secondary" onclick="leaveRoom()">Leave Room</button>
+</div>
+
+<div class="screen" id="screenCamera">
+<h1>Take 4 Photos!</h1>
+<p id="photoCount" style="color:#a03a6b">Photo 1 of 4</p>
+<div class="camera-container" id="cameraContainer">
+<div class="camera-placeholder" id="cameraPlaceholder">Camera loading...</div>
+<video id="video" autoplay playsinline muted></video>
+</div>
+<div class="countdown hidden" id="countdown">3</div>
+<div class="snap-btn" id="snapBtn" onclick="startCountdown()"><div class="snap-btn-inner"></div></div>
+<div id="cameraFallback" class="camera-error hidden">
+<h3>📷 Camera Not Available</h3>
+<p>Camera access is blocked or not supported. You can upload photos instead!</p>
+<button class="upload-btn" onclick="document.getElementById('fileInput').click()">📁 Upload Photos</button>
+<input type="file" id="fileInput" accept="image/*" multiple onchange="handleFileUpload(event)">
+</div>
+<div class="photo-strip" id="photoPreview"></div>
+<button class="btn hidden" id="doneBtn" onclick="finishPhotos()">Done! Go to Editor</button>
+<button class="btn btn-secondary" onclick="resetPhotos()">Retake</button>
+</div>
+
+<div class="screen" id="screenEditor">
+<h1>Edit Together!</h1>
+<p id="editorStatus" style="color:#a03a6b">Edit your photos</p>
+<canvas id="editorCanvas" class="editor-canvas"></canvas>
+<div class="toolbar">
+<button class="toolbar-btn active" onclick="setTool('template')">Templates</button>
+<button class="toolbar-btn" onclick="setTool('filter')">Filters</button>
+<button class="toolbar-btn" onclick="setTool('frame')">Frames</button>
+<button class="toolbar-btn" onclick="setTool('background')">Background</button>
+<button class="toolbar-btn" onclick="setTool('sticker')">Stickers</button>
+<button class="toolbar-btn" onclick="setTool('text')">Text</button>
+</div>
+<div id="toolPanel">
+<div id="templatePanel" class="tool-panel">
+<div class="template-grid">
+<button class="template-btn active" onclick="setTemplate('classic')">Classic</button>
+<button class="template-btn" onclick="setTemplate('polaroid')">Polaroid</button>
+<button class="template-btn" onclick="setTemplate('pink')">Pink Dream</button>
+<button class="template-btn" onclick="setTemplate('sakura')">Sakura</button>
+<button class="template-btn" onclick="setTemplate('midnight')">Midnight</button>
+<button class="template-btn" onclick="setTemplate('retro')">Retro 90s</button>
+<button class="template-btn" onclick="setTemplate('golden')">Golden Hour</button>
+<button class="template-btn" onclick="setTemplate('mint')">Mint</button>
+<button class="template-btn" onclick="setTemplate('lavender')">Lavender</button>
+<button class="template-btn" onclick="setTemplate('romantic')">Romantic</button>
+<button class="template-btn" onclick="setTemplate('cute')">Cute</button>
+<button class="template-btn" onclick="setTemplate('valentine')">Valentine</button>
+</div>
+</div>
+<div id="filterPanel" class="tool-panel hidden">
+<div class="template-grid">
+<button class="template-btn active" onclick="setFilter('none')">Original</button>
+<button class="template-btn" onclick="setFilter('warm')">Warm</button>
+<button class="template-btn" onclick="setFilter('cool')">Cool</button>
+<button class="template-btn" onclick="setFilter('bw')">B&W</button>
+<button class="template-btn" onclick="setFilter('vintage')">Vintage</button>
+<button class="template-btn" onclick="setFilter('dreamy')">Dreamy</button>
+<button class="template-btn" onclick="setFilter('sepia')">Sepia</button>
+<button class="template-btn" onclick="setFilter('sunset')">Sunset</button>
+<button class="template-btn" onclick="setFilter('pastel')">Pastel</button>
+</div>
+</div>
+<div id="framePanel" class="tool-panel hidden">
+<div class="template-grid">
+<button class="template-btn active" onclick="setFrame('none')">None</button>
+<button class="template-btn" onclick="setFrame('rounded')">Rounded</button>
+<button class="template-btn" onclick="setFrame('polaroid')">Polaroid</button>
+<button class="template-btn" onclick="setFrame('heart')">Heart</button>
+<button class="template-btn" onclick="setFrame('filmstrip')">Film Strip</button>
+<button class="template-btn" onclick="setFrame('dashed')">Dashed</button>
+</div>
+</div>
+<div id="backgroundPanel" class="tool-panel hidden">
+<div class="template-grid">
+<button class="template-btn active" onclick="setBackground('none')">None</button>
+<button class="template-btn" onclick="setBackground('gradient1')">Sunset</button>
+<button class="template-btn" onclick="setBackground('gradient2')">Ocean</button>
+<button class="template-btn" onclick="setBackground('gradient3')">Forest</button>
+<button class="template-btn" onclick="setBackground('gradient4')">Berry</button>
+<button class="template-btn" onclick="setBackground('polka')">Polka Dots</button>
+</div>
+</div>
+<div id="stickerPanel" class="tool-panel hidden">
+<div class="sticker-grid">
+<button class="sticker-btn" onclick="addSticker('❤️')">❤️</button>
+<button class="sticker-btn" onclick="addSticker('💕')">💕</button>
+<button class="sticker-btn" onclick="addSticker('💖')">💖</button>
+<button class="sticker-btn" onclick="addSticker('💗')">💗</button>
+<button class="sticker-btn" onclick="addSticker('💘')">💘</button>
+<button class="sticker-btn" onclick="addSticker('💝')">💝</button>
+<button class="sticker-btn" onclick="addSticker('😍')">😍</button>
+<button class="sticker-btn" onclick="addSticker('🥰')">🥰</button>
+<button class="sticker-btn" onclick="addSticker('😘')">😘</button>
+<button class="sticker-btn" onclick="addSticker('🌹')">🌹</button>
+<button class="sticker-btn" onclick="addSticker('🌸')">🌸</button>
+<button class="sticker-btn" onclick="addSticker('🌺')">🌺</button>
+<button class="sticker-btn" onclick="addSticker('⭐')">⭐</button>
+<button class="sticker-btn" onclick="addSticker('✨')">✨</button>
+<button class="sticker-btn" onclick="addSticker('🌈')">🌈</button>
+<button class="sticker-btn" onclick="addSticker('🌙')">🌙</button>
+<button class="sticker-btn" onclick="addSticker('☀️')">☀️</button>
+<button class="sticker-btn" onclick="addSticker('🎀')">🎀</button>
+<button class="sticker-btn" onclick="addSticker('🎁')">🎁</button>
+<button class="sticker-btn" onclick="addSticker('🎉')">🎉</button>
+<button class="sticker-btn" onclick="addSticker('🎈')">🎈</button>
+<button class="sticker-btn" onclick="addSticker('🍰')">🍰</button>
+<button class="sticker-btn" onclick="addSticker('🍬')">🍬</button>
+<button class="sticker-btn" onclick="addSticker('🍭')">🍭</button>
+<button class="sticker-btn" onclick="addSticker('🐶')">🐶</button>
+<button class="sticker-btn" onclick="addSticker('🐱')">🐱</button>
+<button class="sticker-btn" onclick="addSticker('🐰')">🐰</button>
+<button class="sticker-btn" onclick="addSticker('🐻')">🐻</button>
+<button class="sticker-btn" onclick="addSticker('🦄')">🦄</button>
+<button class="sticker-btn" onclick="addSticker('🦋')">🦋</button>
+<button class="sticker-btn" onclick="addSticker('💌')">💌</button>
+<button class="sticker-btn" onclick="addSticker('💋')">💋</button>
+<button class="sticker-btn" onclick="addSticker('💍')">💍</button>
+<button class="sticker-btn" onclick="addSticker('💐')">💐</button>
+<button class="sticker-btn" onclick="addSticker('🕊️')">🕊️</button>
+</div>
+</div>
+<div id="textPanel" class="tool-panel hidden">
+<input type="text" class="text-input" id="textInput" placeholder="Type your text here...">
+<div class="color-picker">
+<button class="color-btn active" style="background:#fff" onclick="setTextColor('#fff')"></button>
+<button class="color-btn" style="background:#ff0000" onclick="setTextColor('#ff0000')"></button>
+<button class="color-btn" style="background:#ff69b4" onclick="setTextColor('#ff69b4')"></button>
+<button class="color-btn" style="background:#ffd700" onclick="setTextColor('#ffd700')"></button>
+<button class="color-btn" style="background:#00ff00" onclick="setTextColor('#00ff00')"></button>
+<button class="color-btn" style="background:#00ffff" onclick="setTextColor('#00ffff')"></button>
+<button class="color-btn" style="background:#ff00ff" onclick="setTextColor('#ff00ff')"></button>
+<button class="color-btn" style="background:#000" onclick="setTextColor('#000')"></button>
+<button class="color-btn" style="background:#ff8c00" onclick="setTextColor('#ff8c00')"></button>
+<button class="color-btn" style="background:#9370db" onclick="setTextColor('#9370db')"></button>
+<button class="color-btn" style="background:#4169e1" onclick="setTextColor('#4169e1')"></button>
+<button class="color-btn" style="background:#ff1493" onclick="setTextColor('#ff1493')"></button>
+</div>
+<button class="btn" onclick="addText()">Add Text</button>
+</div>
+</div>
+<div class="toolbar">
+<button class="toolbar-btn" onclick="downloadFinal()">Download</button>
+<button class="toolbar-btn" onclick="shareResult()">Share</button>
+</div>
+<button class="btn btn-secondary" onclick="resetAll()">New Session</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentRoom=null,isHost=false,stream=null,photos=[],partnerPhotos=[],photoCount=0,editorState={template:'classic',filter:'none',frame:'none',background:'none',stickers:[],texts:[]},cameraReady=false;
+const templates={classic:{bg:'#fff',accent:'#333'},polaroid:{bg:'#f5f5f5',accent:'#333'},pink:{bg:'#ffe4e1',accent:'#ff69b4'},sakura:{bg:'#fff0f5',accent:'#ffb7c5'},midnight:{bg:'#191970',accent:'#fff'},retro:{bg:'#f0e68c',accent:'#ff6347'},golden:{bg:'#ffd700',accent:'#8b4513'},mint:{bg:'#f0fff0',accent:'#3cb371'},lavender:{bg:'#e6e6fa',accent:'#9370db'},romantic:{bg:'#fff5ee',accent:'#dc143c'},cute:{bg:'#fff0f5',accent:'#ff69b4'},valentine:{bg:'#ffe4e1',accent:'#ff1493'}};
+const filters={none:'none',warm:'sepia(30%) saturate(140%) brightness(105%)',cool:'hue-rotate(180deg) saturate(90%) brightness(105%)',bw:'grayscale(100%)',vintage:'sepia(50%) contrast(85%) brightness(95%)',dreamy:'blur(1px) saturate(120%) brightness(110%)',sepia:'sepia(100%)',sunset:'hue-rotate(320deg) saturate(150%) brightness(105%)',pastel:'saturate(60%) brightness(110%)'};
+const frames={none:'none',rounded:'15px',polaroid:'0 0 0 10px #fff,0 0 0 12px #333,0 10px 20px rgba(0,0,0,0.3)',heart:'none',filmstrip:'0 0 0 5px #000,0 0 0 7px #fff',dashed:'2px dashed #fff'};
+const backgrounds={none:'transparent',gradient1:'linear-gradient(135deg,#ff6b6b,#feca57)',gradient2:'linear-gradient(135deg,#48dbfb,#0abde3)',gradient3:'linear-gradient(135deg,#1dd1a1,#10ac84)',gradient4:'linear-gradient(135deg,#ff9ff3,#f368e0)',polka:'radial-gradient(circle,#fff 20%,transparent 20%)'};
+
+function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='screenCamera')startCamera();if(id==='screenMenu'){document.getElementById('authLoader').style.display='none';}}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+function showCreateRoom(){goTo('screenCreate');}
+
+function createRoom(){const name=document.getElementById('createNameInput').value.trim();if(!name){showToast('Please enter your name');return;}const code=Math.random().toString(36).substring(2,8).toUpperCase();currentRoom=code;isHost=true;document.getElementById('roomCodeDisplay').textContent=code;const baseUrl=window.location.href.split('?')[0];document.getElementById('shareLink').textContent=baseUrl+'?room='+code;document.getElementById('hostName').textContent=name;document.getElementById('hostStatus').className='status-indicator status-online';document.getElementById('startShootBtn').disabled=false;document.getElementById('startShootBtn').textContent='Start Taking Photos!';goTo('screenLobby');showToast('Room created! Code: '+code);}
+function showJoinRoom(){goTo('screenJoin');}
+function joinRoom(){const name=document.getElementById('joinNameInput').value.trim();if(!name){showToast('Please enter your name');return;}const code=document.getElementById('roomCodeInput').value.toUpperCase().trim();if(!code){showToast('Enter room code');return;}currentRoom=code;isHost=false;document.getElementById('roomCodeDisplay').textContent=currentRoom;document.getElementById('guestName').textContent=name;document.getElementById('guestStatus').className='status-indicator status-online';document.getElementById('startShootBtn').disabled=false;document.getElementById('startShootBtn').textContent='Start Taking Photos!';goTo('screenLobby');showToast('Joined room!');}
+function leaveRoom(){resetAll();}
+
+async function startCamera(){cameraReady=false;const video=document.getElementById('video');const placeholder=document.getElementById('cameraPlaceholder');const fallback=document.getElementById('cameraFallback');placeholder.style.display='block';video.classList.remove('active');fallback.classList.add('hidden');
+
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){placeholder.textContent='Camera not supported on this browser';fallback.classList.remove('hidden');return;}
+
+try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});video.srcObject=stream;video.onloadedmetadata=()=>{video.play();placeholder.style.display='none';video.classList.add('active');cameraReady=true;showToast('Camera ready!');};}catch(e){console.error('Camera error:',e);placeholder.style.display='none';fallback.classList.remove('hidden');if(e.name==='NotAllowedError'){showToast('Please allow camera access in your browser settings');}else if(e.name==='NotFoundError'){showToast('No camera found on this device');}else{showToast('Camera error: '+e.message);}}}
+
+function handleFileUpload(event){const files=event.target.files;if(!files.length)return;Array.from(files).forEach(file=>{const reader=new FileReader();reader.onload=(e)=>{if(photoCount<4){photos.push(e.target.result);photoCount++;document.getElementById('photoCount').textContent='Photo '+photoCount+' of 4';const img=document.createElement('img');img.src=e.target.result;img.style.height='100px';document.getElementById('photoPreview').appendChild(img);if(photoCount>=4){document.getElementById('snapBtn').classList.add('hidden');document.getElementById('doneBtn').classList.remove('hidden');}}};reader.readAsDataURL(file);});}
+
+function startCountdown(){if(!cameraReady&&!photos.length){showToast('Camera not ready. Upload photos instead!');document.getElementById('cameraFallback').classList.remove('hidden');return;}if(photoCount>=4)return;let count=3;const el=document.getElementById('countdown');el.classList.remove('hidden');el.textContent=count;const timer=setInterval(()=>{count--;if(count>0){el.textContent=count;}else{clearInterval(timer);el.classList.add('hidden');takePhoto();}},1000);}
+
+function takePhoto(){if(!cameraReady){showToast('Camera not available. Use upload instead.');return;}const video=document.getElementById('video');const canvas=document.getElementById('canvas');canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;const ctx=canvas.getContext('2d');ctx.translate(canvas.width,0);ctx.scale(-1,1);ctx.drawImage(video,0,0,canvas.width,canvas.height);const dataUrl=canvas.toDataURL('image/jpeg',0.8);photos.push(dataUrl);photoCount++;document.getElementById('photoCount').textContent='Photo '+photoCount+' of 4';const img=document.createElement('img');img.src=dataUrl;img.style.height='100px';document.getElementById('photoPreview').appendChild(img);if(photoCount>=4){document.getElementById('snapBtn').classList.add('hidden');document.getElementById('doneBtn').classList.remove('hidden');}}
+
+function resetPhotos(){photos=[];photoCount=0;document.getElementById('photoPreview').innerHTML='';document.getElementById('photoCount').textContent='Photo 1 of 4';document.getElementById('snapBtn').classList.remove('hidden');document.getElementById('doneBtn').classList.add('hidden');}
+function finishPhotos(){goTo('screenEditor');initEditor();}
+
+function initEditor(){const canvas=document.getElementById('editorCanvas');const allPhotos=[...photos,...partnerPhotos];if(allPhotos.length===0)return;canvas.width=800;canvas.height=1200;renderEditor();}
+function renderEditor(){const canvas=document.getElementById('editorCanvas');const ctx=canvas.getContext('2d');const t=templates[editorState.template];ctx.fillStyle=t.bg;ctx.fillRect(0,0,canvas.width,canvas.height);if(editorState.background!=='none'){const bg=backgrounds[editorState.background];if(bg.startsWith('linear')){const grad=ctx.createLinearGradient(0,0,canvas.width,canvas.height);const colors=bg.match(/#[a-f0-9]+/gi)||['#ff6b6b','#feca57'];grad.addColorStop(0,colors[0]);grad.addColorStop(1,colors[1]);ctx.fillStyle=grad;ctx.fillRect(0,0,canvas.width,canvas.height);}else if(bg==='polka'){ctx.fillStyle='rgba(255,255,255,0.3)';for(let i=0;i<canvas.width;i+=40){for(let j=0;j<canvas.height;j+=40){ctx.beginPath();ctx.arc(i,j,5,0,Math.PI*2);ctx.fill();}}}}
+const allPhotos=[...photos,...partnerPhotos];const cols=2,rows=Math.ceil(allPhotos.length/cols)||1;const pw=(canvas.width/cols)-40,ph=(canvas.height/rows)-40;allPhotos.forEach((src,i)=>{const img=new Image();img.onload=()=>{const x=(i%cols)*(pw+40)+20,y=Math.floor(i/cols)*(ph+40)+20;ctx.save();ctx.beginPath();if(editorState.frame==='heart'){ctx.moveTo(x+pw/2,y);ctx.bezierCurveTo(x+pw,y,x+pw,y+ph/2,x+pw/2,y+ph);ctx.bezierCurveTo(x,y+ph/2,x,y,x+pw/2,y);}else{ctx.rect(x,y,pw,ph);}ctx.clip();ctx.filter=filters[editorState.filter]||'none';ctx.drawImage(img,x,y,pw,ph);ctx.restore();if(editorState.frame!=='none'&&editorState.frame!=='heart'){ctx.strokeStyle='#fff';ctx.lineWidth=editorState.frame==='dashed'?2:4;ctx.setLineDash(editorState.frame==='dashed'?[10,5]:[]);if(editorState.frame==='rounded'){ctx.beginPath();ctx.roundRect(x,y,pw,ph,15);ctx.stroke();}else{ctx.strokeRect(x,y,pw,ph);}}};img.src=src;});editorState.stickers.forEach(s=>{ctx.font=s.size+'px serif';ctx.fillText(s.emoji,s.x,s.y);});editorState.texts.forEach(t=>{ctx.font='bold '+t.size+'px sans-serif';ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);});}
+function setTool(tool){document.querySelectorAll('.tool-panel').forEach(p=>p.classList.add('hidden'));document.getElementById(tool+'Panel').classList.remove('hidden');document.querySelectorAll('.toolbar-btn').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');}
+function setTemplate(t){editorState.template=t;document.querySelectorAll('#templatePanel .template-btn').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');renderEditor();}
+function setFilter(f){editorState.filter=f;document.querySelectorAll('#filterPanel .template-btn').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');renderEditor();}
+function setFrame(f){editorState.frame=f;document.querySelectorAll('#framePanel .template-btn').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');renderEditor();}
+function setBackground(b){editorState.background=b;document.querySelectorAll('#backgroundPanel .template-btn').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');renderEditor();}
+function addSticker(emoji){editorState.stickers.push({emoji:emoji,x:400,y:600,size:60});renderEditor();}
+function setTextColor(c){document.querySelectorAll('.color-btn').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');}
+function addText(){const text=document.getElementById('textInput').value;if(!text)return;editorState.texts.push({text:text,x:400,y:300,color:'#fff',size:40});document.getElementById('textInput').value='';renderEditor();}
+function downloadFinal(){const canvas=document.getElementById('editorCanvas');const link=document.createElement('a');link.download='distance-photobooth-'+Date.now()+'.png';link.href=canvas.toDataURL('image/png');link.click();showToast('Downloaded!');}
+async function shareResult(){if(navigator.share){try{const canvas=document.getElementById('editorCanvas');const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));const file=new File([blob],'photobooth.png',{type:'image/png'});await navigator.share({title:'Distance Photobooth',text:'Our distance photobooth photo!',files:[file]});showToast('Shared!');}catch(e){downloadFinal();}}else{downloadFinal();}}
+function resetAll(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}photos=[];partnerPhotos=[];photoCount=0;editorState={template:'classic',filter:'none',frame:'none',background:'none',stickers:[],texts:[]};currentRoom=null;isHost=false;cameraReady=false;document.getElementById('photoPreview').innerHTML='';document.getElementById('startShootBtn').disabled=true;document.getElementById('startShootBtn').textContent='Waiting for partner...';document.getElementById('roomCodeDisplay').textContent='----';document.getElementById('cameraFallback').classList.add('hidden');goTo('screenMenu');showToast('Ready for a new session!');}
+window.addEventListener('DOMContentLoaded',()=>{document.getElementById('authLoader').style.display='none';document.getElementById('authStatus').textContent='Ready!';setTimeout(()=>goTo('screenMenu'),500);});
+</script>
+</body>
+</html>
